@@ -1,5 +1,5 @@
 // Naimul Hoque Machine Problem 1 Naive Bayes Classifier
-# define PI M_PI 
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -8,8 +8,7 @@
 #include <math.h>
 
 using namespace std;
-double getAccuracy(string,double,double, vector<double>, vector<double>,vector<double>, vector<double>);
-double getGaussianValue(double,double,double);
+double getAccuracy(string,double,double, vector<double>, vector<double>,int);
 
 int main(int argc, char *argv[]){
 
@@ -24,13 +23,12 @@ int main(int argc, char *argv[]){
     string str1 = argv[1];
     string str2 = argv[2];
 
-    // Check if file name correct
     if(str1.compare("covid_test.csv") != 0 && str2.compare("covid_test.csv") != 0){
-        cout << "Incorrect File Name: covid_test.csv" << endl;
+        cout << "Incorrect File: covid_test.csv" << endl;
         exit(EXIT_FAILURE);
     }
     if(str1.compare("covid_train.csv") != 0 && str2.compare("covid_train.csv") != 0){
-        cout << "Incorrect File Name: covid_train.csv" << endl;
+        cout << "Incorrect File: covid_train.csv" << endl;
         exit(EXIT_FAILURE);
     }
     
@@ -54,8 +52,8 @@ int main(int argc, char *argv[]){
         cout << "Unable to open file: covid_train.csv" << endl;
         exit(EXIT_FAILURE);
     }
-
-        
+    
+    rows -= 100000;
     int featureLength = 22;
 
     // Construct 2D dynamic array to hold information regarding the dataset
@@ -112,144 +110,127 @@ int main(int argc, char *argv[]){
 
     // cout << "Probability of Surviving: " << P_survive << endl;
     // cout << "Probability of not Surviving " << P_dead << endl;
-    
-    vector<double> survived_cond_prob;
-    vector<double> not_survived_cond_prob;
-    vector<double> GaussAgeAlive;
-    vector<double> GaussAgeDead;
+    // att =
 
-    for(int i = 0; i < featureLength; i++){
-        bool ignore = features[i].compare("entry_date") == 0 || features[i].compare("date_symptoms") == 0 
-        || features[i].compare("date_died") == 0;
+    // vector<double> accuracies;
+    // // for(int att = 8; att < featureLength; att++){
+    // //     if(att == 9 || att == 8 || att == 11 || att == 10)
+    // //         continue;
+    // for (int age_desired = 30; age_desired < 90; age_desired++){
+        int age_desired = 51;
+        vector<double> survived_cond_prob;
+        vector<double> not_survived_cond_prob;
 
-        if(ignore){
-            // Skip
-        }else{
-            int yes_Survive = 0;
-            int no_Survive = 0;
-            int yes_NoSurvive = 0;
-            int no_NoSurvive = 0;
+        
 
-            int counts_survive = 0;
-            int counts_dead = 0;
+        // Chose 1 = true and 2 = false, "sex" "copd" "asthma" "inmsupr" "hypertension"
+        for(int i = 0; i < featureLength; i++){
+            bool ignore = features[i].compare("entry_date") == 0 || features[i].compare("date_symptoms") == 0 
+            || features[i].compare("date_died") == 0 || i == 1 || i == 9 || i == 8 || i == 11 || i == 10;
 
-            int unknown_dead = 0;
-            int unknown_alive = 0;
-            int ageSumAlive = 0;
-            int ageSumDead = 0;
+            if(ignore){
+                // Skip
+            }else{
+                int yes_Survive = 0;
+                int no_Survive = 0;
+                int yes_NoSurvive = 0;
+                int no_NoSurvive = 0;
+
+                int counts_survive = 0;
+                int counts_dead = 0;
+                for(int j = 1; j < rows; j++){
+                    int value = atoi(data[j][i].c_str());
+                    if(data[j][date_died_ind].compare("9999-99-99") == 0){
+                        counts_survive++;
+                        if(features[i].compare("age") == 0){
+                            if(value  >= age_desired)
+                                yes_Survive++;
+                            else if(value < age_desired)
+                                no_Survive++;
+                            else
+                                continue;
+                        }
+                        else{
+                            if(value == 1)
+                                yes_Survive++;
+                            else if(value == 2)
+                                no_Survive++;
+                            else
+                                continue;
+                        }
+                    }
+                    else{
+                        counts_dead++;
+                        if(features[i].compare("age") == 0){
+                            if(value >= age_desired)
+                                yes_NoSurvive++;
+                            else if(value < age_desired)
+                                no_NoSurvive++;
+                            else
+                                continue;
+                        }
+                        else{
+                            if(value == 1)
+                                yes_NoSurvive++;
+                            else if(value == 2)
+                                no_NoSurvive++;
+                            else
+                                continue;
+                        }
+                    }             
+                }
+                double alpha = .5;
+                double prob_true_given_survive = (double(yes_Survive)+alpha)/((counts_survive) + alpha*(featureLength - 1));
+                double prob_false_given_survive = (double(no_Survive) + alpha)/((counts_survive) + alpha*(featureLength - 1));
+                double prob_true_given_not_survive = (double(yes_NoSurvive) + alpha)/((counts_dead) + alpha*(featureLength - 1));
+                double prob_false_given_not_survive = (double(no_NoSurvive) + alpha)/((counts_dead) + alpha*(featureLength - 1));
             
-            // Iterate through data to calculate probabilities
-            for(int j = 1; j < rows; j++){
-                int value = atoi(data[j][i].c_str());
-                if(data[j][date_died_ind].compare("9999-99-99") == 0){
-                    counts_survive++;
-                    if(features[i].compare("age") == 0){
-                        ageSumAlive += value;
-                    }
-                    else{
-                        if(value == 1)
-                            yes_Survive++;
-                        else if(value == 2)
-                            no_Survive++;
-                        else
-                            unknown_alive++;
-                    }
-                }
-                else{
-                    counts_dead++;
-                    if(features[i].compare("age") == 0){
-                        ageSumDead += value;
-                    }
-                    else{
-                        if(value == 1)
-                            yes_NoSurvive++;
-                        else if(value == 2)
-                            no_NoSurvive++;
-                        else
-                            unknown_dead++;
-                    }
-                }             
-            }
-
-            if(features[i].compare("age") != 0){
-
-                // Used if we want to ignore unknown values
-
-                // double prob_true_given_survive = double(yes_Survive)/(counts_survive);
-                // double prob_false_given_survive = double(no_Survive)/(counts_survive);
-                // double prob_true_given_not_survive = double(yes_NoSurvive)/(counts_dead);
-                // double prob_false_given_not_survive = double(no_NoSurvive)/(counts_dead);
-
-                double prob_true_given_survive;
-                double prob_false_given_survive;
-                double prob_true_given_not_survive;
-                double prob_false_given_not_survive;
-
-                if(yes_Survive > no_Survive && features[i].compare("age") != 0 ){
-                    prob_true_given_survive = double(yes_Survive + unknown_alive)/surviveCount;
-                    prob_false_given_survive = 1 - prob_true_given_survive;
-                }
-                else{
-                    prob_false_given_survive = double(no_Survive + unknown_alive)/surviveCount;
-                    prob_true_given_survive = 1 - prob_false_given_survive;
-                }
-
-                if(yes_NoSurvive > no_NoSurvive && features[i].compare("age") != 0 ){
-                    prob_true_given_not_survive = double(yes_NoSurvive + unknown_dead)/(not_survive_count);
-                    prob_false_given_not_survive = 1 - prob_true_given_not_survive;
-                }
-                else{
-                    prob_false_given_not_survive = double(no_NoSurvive + unknown_dead)/not_survive_count;
-                    prob_true_given_not_survive = 1 - prob_false_given_not_survive;
-                }
-
+                // cout << "P( " << features[i] << " | Survive ) = " << prob_true_given_survive << endl;
+                // cout << "P( not " << features[i] << " | Survive ) = " << prob_false_given_survive << endl;
+                // cout << "P( " << features[i] << " | not Survive ) = " << prob_true_given_not_survive << endl;
+                // cout << "P( not " << features[i] << " | not Survive ) = " << prob_false_given_not_survive << endl;
+                
                 survived_cond_prob.push_back(prob_true_given_survive);
                 survived_cond_prob.push_back(prob_false_given_survive);
                 not_survived_cond_prob.push_back(prob_true_given_not_survive);
                 not_survived_cond_prob.push_back(prob_false_given_not_survive);
             }
-            else{
-                // Determine mean and std for Gaussian Distribution for age
-                double muAlive = double(ageSumAlive)/counts_survive;
-                double muDead = double(ageSumDead)/counts_dead;
-                double stdAlive = 0;
-                double stdDead = 0;
-                for(int k = 1; k < rows; k++){
-                    int value = atoi(data[k][i].c_str());
-                    if(data[k][date_died_ind].compare("9999-99-99") == 0){
-                        stdAlive += pow((value - muAlive),2);
-                    }
-                    else{
-                        stdDead += pow((value-muDead),2);
-                    }
-                }
-
-                stdAlive = sqrt((stdAlive / counts_survive));
-                stdDead = sqrt((stdDead / counts_dead));
-
-                GaussAgeAlive.push_back(muAlive);
-                GaussAgeAlive.push_back(stdAlive);
-                GaussAgeDead.push_back(muDead);
-                GaussAgeDead.push_back(stdDead);
-            }
-
-            // cout << "P( " << features[i] << " | Survive ) = " << prob_true_given_survive << endl;
-            // cout << "P( not " << features[i] << " | Survive ) = " << prob_false_given_survive << endl;
-            // cout << "P( " << features[i] << " | not Survive ) = " << prob_true_given_not_survive << endl;
-            // cout << "P( not " << features[i] << " | not Survive ) = " << prob_false_given_not_survive << endl;             
-        }   
-    }
-    
-    t = clock() - t;
-    
-    //double train_accuracy = getAccuracy(cvd_train,P_survive,P_dead,survived_cond_prob,not_survived_cond_prob);
-    double test_accuracy = getAccuracy(cvd_valid,P_survive,P_dead, survived_cond_prob,not_survived_cond_prob,GaussAgeAlive,GaussAgeDead);
-    cout << "Test Accuracy: " << test_accuracy << endl;
+            
+        }
         
+        // double trainTime = double(clock() - t) / CLOCKS_PER_SEC;
+        // cout << "Training Time: " << trainTime << " seconds" << endl;
+        // t = clock();
+        //double train_accuracy = getAccuracy(cvd_train,P_survive,P_dead, survived_cond_prob,not_survived_cond_prob,age_desired);
+        double test_accuracy = getAccuracy(cvd_valid,P_survive,P_dead, survived_cond_prob,not_survived_cond_prob,age_desired);
+        // double testTime = double(clock() - t) / CLOCKS_PER_SEC;
+        // cout << "Test Time: " << testTime << " seconds" << endl;
+        // cout << "Test Accuracy: " << test_accuracy << endl;
+        // cout << "Train Accuracy: " << train_accuracy << endl;
+        
+        // cout << "Sizes: " << survived_cond_prob.size() << "     " << not_survived_cond_prob.size() << endl;
+        //cout << "Test Accuracy: " << test_accuracy << endl;
+
+    //     accuracies.push_back(test_accuracy);
+
+    // }
+
+    // double maxAccuracy = accuracies[0];
+    // int maxAge = 30;
+    // for(int i = 0; i < accuracies.size(); i++){
+    //     if(accuracies[i] > maxAccuracy)
+    //     {
+    //         maxAge = i + 30;
+    //         maxAccuracy = accuracies[i];
+    //     }
+    // }
+
+    // cout << "Max Accuracy: " << maxAccuracy << endl;
+    // cout << "Max Age: " << maxAge << endl;
     return 0;    
 }
 
-double getAccuracy(string file_name , double survive, double dead, vector<double> survive_cond, vector<double> dead_cond, vector<double> GaussAlive, vector<double> GaussDead){
+double getAccuracy(string file_name , double survive, double dead, vector<double> survive_cond, vector<double> dead_cond, int age_desired){
     double accuracy;
     double correct = 0;
     double total = 0;
@@ -274,17 +255,17 @@ double getAccuracy(string file_name , double survive, double dead, vector<double
                     int value = atoi(line.c_str());
                     if(value == 1){
                         survive_prob += log(survive_cond[2*vectorCount]);
-                        dead_prob + log(dead_cond[2*vectorCount]);
+                        dead_prob += log(dead_cond[2*vectorCount]);
                     }
                     else if(value == 2){
-                        survive_prob += log(survive_cond[(2*vectorCount)+1]) ;
+                        survive_prob += log(survive_cond[(2*vectorCount)+1]);
                         dead_prob += log(dead_cond[(2*vectorCount)+1]);
                     }
                     else{
                         continue;
                     }
                 }
-                else if(j == 2 || j == 3){
+                else if(j == 2 || j == 3 || j == 1 || j == 9 || j == 8 || j == 11 || j == 10){
                     getline(csv_file,line,',');
                 }
                 else if(j == 4){
@@ -294,25 +275,19 @@ double getAccuracy(string file_name , double survive, double dead, vector<double
                     else
                         label = 1;
                 }
-                else if(j == 7){
-                    getline(csv_file,line,',');
-                    int value = atoi(line.c_str());
-                    survive_prob += log(getGaussianValue(GaussAlive[0],GaussAlive[1],value)) ;
-                    dead_prob += log(getGaussianValue(GaussDead[0],GaussDead[1],value));
-                }
                 else{
                     getline(csv_file,line,',');
                     int value = atoi(line.c_str());
-                    if(value == 1){
+                    if(value == 1 || ((value >= age_desired) && j == 7)){
                         survive_prob += log(survive_cond[2*vectorCount]);
                         dead_prob += log(dead_cond[2*vectorCount]);
                     }
-                    else if(value == 2){
-                        survive_prob += log(survive_cond[(2*vectorCount)+1]) ;
+                    else if(value == 2 || ((value < age_desired) && j == 7)){
+                        survive_prob += log(survive_cond[(2*vectorCount)+1]);
                         dead_prob += log(dead_cond[(2*vectorCount)+1]);
                     }
                     else{
-                        continue;
+                        ;
                     }
                     vectorCount++;
                     
@@ -337,13 +312,6 @@ double getAccuracy(string file_name , double survive, double dead, vector<double
     }
     
     csv_file.close();
-    //cout << "Total" << total << endl;
     accuracy = double(correct)/total;
     return accuracy;
-}
-
-double getGaussianValue(double mu, double std, double x){
-    double firstPart = 1 / sqrt(2*PI*(pow(std,2)));
-    double secondPart = (-1 * (pow((x-mu),2))) / (2*(pow(std,2)));
-    return firstPart * exp(secondPart);
 }
